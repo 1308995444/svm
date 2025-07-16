@@ -79,9 +79,9 @@ if st.button("Predict"):
     ax.axis('off')
     st.pyplot(fig)
 
-    # SHAP解释 - 修改为适合SVM的解释器
+    # SHAP解释 - 使用新版API
     try:
-        # 尝试使用KernelExplainer
+        # 创建解释器
         explainer = shap.KernelExplainer(
             model.predict_proba,
             shap.sample(features, 1)  # 使用单个样本作为背景
@@ -101,12 +101,12 @@ if st.button("Predict"):
         # 创建DataFrame用于显示
         feature_df = pd.DataFrame([feature_values], columns=feature_ranges.keys())
 
-        # 绘制SHAP force plot
+        # 绘制SHAP force plot (新版API)
         plt.figure()
-        shap.force_plot(
+        shap.plots.force(
             expected_value,
             shap_values_class,
-            feature_df,
+            feature_df.iloc[0],  # 使用单个样本
             matplotlib=True,
             show=False
         )
