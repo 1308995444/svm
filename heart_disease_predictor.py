@@ -8,7 +8,7 @@ from matplotlib import font_manager
 
 
 # 模型加载
-model = joblib.load('XGB.pkl')
+model = joblib.load('svm.pkl')
 
 # 特征定义
 feature_ranges = {
