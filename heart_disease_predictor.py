@@ -6,7 +6,6 @@ import shap
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-
 # 模型加载
 model = joblib.load('svm.pkl')
 
@@ -80,27 +79,39 @@ if st.button("Predict"):
     ax.axis('off')
     st.pyplot(fig)
 
-    # SHAP解释
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(pd.DataFrame([feature_values], columns=feature_ranges.keys()))
-    
-    if isinstance(shap_values, list):
+    # SHAP解释 - 修改为适合SVM的解释器
+    try:
+        # 尝试使用KernelExplainer
+        explainer = shap.KernelExplainer(
+            model.predict_proba,
+            shap.sample(features, 1)  # 使用单个样本作为背景
+        )
+        
+        # 计算SHAP值
+        shap_values = explainer.shap_values(features)
+        
+        # 处理多分类输出
+        if isinstance(shap_values, list):
+            shap_values_class = shap_values[predicted_class][0]
+            expected_value = explainer.expected_value[predicted_class]
+        else:
+            shap_values_class = shap_values[0]
+            expected_value = explainer.expected_value
 
-        shap_values_class = shap_values[predicted_class][0]
-        expected_value = explainer.expected_value[predicted_class]
-    else:
+        # 创建DataFrame用于显示
+        feature_df = pd.DataFrame([feature_values], columns=feature_ranges.keys())
 
-        shap_values_class = shap_values[0]
-        expected_value = explainer.expected_value
-
-    feature_df = pd.DataFrame([feature_values], columns=feature_ranges.keys())
-
-    plt.figure()
-    shap_plot = shap.force_plot(
-        expected_value,
-        shap_values_class,
-        feature_df,
-        matplotlib=True,
-        show=False
-    )
-    st.pyplot(plt.gcf())
+        # 绘制SHAP force plot
+        plt.figure()
+        shap.force_plot(
+            expected_value,
+            shap_values_class,
+            feature_df,
+            matplotlib=True,
+            show=False
+        )
+        st.pyplot(plt.gcf())
+        
+    except Exception as e:
+        st.warning(f"SHAP解释生成失败: {str(e)}")
+        st.write("当前模型配置可能不支持SHAP可视化。")
