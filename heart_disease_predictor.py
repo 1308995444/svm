@@ -3,23 +3,37 @@ import joblib
 import numpy as np
 import shap
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 
-# 模型加载
+# 1. 模型加载
 try:
     model = joblib.load('svm.pkl')
 except Exception as e:
     st.error(f"模型加载失败: {str(e)}")
     st.stop()
 
-# 原始特征定义
+# 2. 原始特征定义（严格保留）
 feature_ranges = {
     'gender': {"type": "categorical", "options": [1, 2], "desc": "性别 (1:男 2:女)"},
     'srh': {"type": "categorical", "options": [1,2,3,4,5], "desc": "自评健康 (1-5)"},
-    # ...（其他特征定义保持不变）
+    'adlab_c': {"type": "categorical", "options": [0,1,2,3,4,5,6], "desc": "日常活动能力 (0-6)"},
+    'arthre': {"type": "categorical", "options": [0, 1], "desc": "关节炎 (0:无 1:有)"},
+    'digeste': {"type": "categorical", "options": [0, 1], "desc": "消化问题 (0:无 1:有)"},
+    'retire': {"type": "categorical", "options": [0, 1], "desc": "退休状态 (0:未退 1:已退)"},
+    'satlife': {"type": "categorical", "options": [1,2,3,4,5], "desc": "生活满意度 (1-5)"},
+    'sleep': {"type": "numerical", "min": 0.0, "max": 24.0, "default": 7.0, "step": 0.5, "desc": "睡眠时长(小时)"},
+    'disability': {"type": "categorical", "options": [0, 1], "desc": "残疾 (0:无 1:有)"},
+    'internet': {"type": "categorical", "options": [0, 1], "desc": "上网 (0:否 1:是)"},
+    'hope': {"type": "categorical", "options": [1,2,3,4], "desc": "希望程度 (1-4)"},
+    'fall_down': {"type": "categorical", "options": [0, 1], "desc": "跌倒史 (0:无 1:有)"},
+    'eyesight_close': {"type": "categorical", "options": [1,2,3,4,5], "desc": "视力 (1-5)"},
+    'hear': {"type": "categorical", "options": [1,2,3,4,5], "desc": "听力 (1-5)"},
+    'edu': {"type": "categorical", "options": [1,2,3,4], "desc": "教育程度 (1-4)"},
+    'pension': {"type": "categorical", "options": [0, 1], "desc": "养老金 (0:无 1:有)"},
+    'pain': {"type": "categorical", "options": [0, 1], "desc": "慢性疼痛 (0:无 1:有)"}
 }
 
-# 输入界面
+# 3. 输入界面（原始布局）
+st.title("抑郁症风险预测")
 feature_values = []
 for feature, prop in feature_ranges.items():
     if prop["type"] == "numerical":
@@ -39,12 +53,12 @@ for feature, prop in feature_ranges.items():
         )
     feature_values.append(value)
 
-# 预测执行
+# 4. 预测执行（原始流程）
 if st.button("预测"):
     features = np.array([feature_values])
     
     try:
-        # 预测结果
+        # 原始预测逻辑
         pred = model.predict(features)[0]
         try:
             proba = model.predict_proba(features)[0][pred]
@@ -53,58 +67,40 @@ if st.button("预测"):
             decision = model.decision_function(features)[0]
             confidence = f"决策值: {decision:.2f}"
         
+        # 原始结果显示方式
         st.write(f"预测结果: {'高风险' if pred == 1 else '低风险'}")
         st.write(f"置信度: {confidence}")
         
-        # SHAP解释（动态调整版）
-        st.subheader("特征影响分析")
+        # SHAP解释（修复空白问题）
+        st.subheader("特征影响")
         try:
-            # 1. 创建解释器
+            # 修复1: 使用更稳定的背景数据生成方式
             background = np.tile(features.mean(axis=0), (10, 1))
+            
+            # 修复2: 明确指定feature_names
             explainer = shap.KernelExplainer(
                 model.predict, 
                 background,
                 feature_names=list(feature_ranges.keys())
             )
             
-            # 2. 计算SHAP值
+            # 修复3: 确保shap_values维度正确
             shap_values = explainer.shap_values(features)
             if isinstance(shap_values, list):
                 shap_values = shap_values[1]  # 取正类SHAP值
-            sv = shap_values[0]  # 获取当前样本的SHAP值
             
-            # 3. 动态计算坐标范围（核心逻辑）
-            max_abs_impact = max(0.2, np.abs(sv).max() * 1.2)  # 保证最小0.2范围，留20%余量
-            tick_interval = max(0.05, round(max_abs_impact/4, 2))  # 动态刻度间隔
-            
-            # 4. 创建图形
-            plt.figure(figsize=(12, 4))
-            force_plot = shap.force_plot(
+            # 修复4: 显式创建图形对象
+            plt.figure(figsize=(12, 3))
+            shap.force_plot(
                 explainer.expected_value,
-                sv,
+                shap_values[0],
                 features[0],
                 feature_names=list(feature_ranges.keys()),
                 matplotlib=True,
                 show=False
             )
-            
-            # 5. 动态调整图形属性
-            ax = plt.gca()
-            ax.set_xlim(-max_abs_impact, max_abs_impact)
-            
-            # 设置专业刻度（保证刻度数为奇数，包含0）
-            ax.xaxis.set_major_locator(MaxNLocator(nbins=5, steps=[1, 2, 5]))
-            ax.grid(True, linestyle='--', alpha=0.6)
-            
-            # 添加参考线
-            ax.axvline(0, color='black', linestyle='-', linewidth=0.8)
-            
-            # 6. 显示图形
-            st.pyplot(plt.gcf(), clear_figure=True)
+            st.pyplot(plt.gcf(), clear_figure=True)  # 修复5: 添加clear_figure
             plt.close()
-            
-            # 显示当前范围信息
-            st.caption(f"动态坐标范围: [-{max_abs_impact:.2f}, {max_abs_impact:.2f}]")
             
         except Exception as e:
             st.warning(f"SHAP解释生成失败: {str(e)}")
