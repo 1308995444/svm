@@ -88,31 +88,44 @@ if st.button("Predict"):
     st.pyplot(fig)
 
     # SHAP解释（适配SVM的KernelExplainer）
-    st.subheader("SHAP Explanation")
-    try:
-        # 创建背景数据（使用k-means或简单抽样）
-        background = shap.sample(features, 10) if features.shape[0] > 10 else features
-        
-        # 创建SVM解释器
-        explainer = shap.KernelExplainer(model.predict, background)
-        shap_values = explainer.shap_values(features)
-        
-        # 获取当前类别的SHAP值
-        shap_values_class = shap_values[0] if isinstance(shap_values, list) else shap_values
-        
-        # 绘制force plot（保持原始可视化风格）
-        plt.figure()
-        shap.force_plot(
-            explainer.expected_value,
-            shap_values_class,
-            features,
-            feature_names=list(feature_ranges.keys()),
-            matplotlib=True,
-            show=False
-        )
-        st.pyplot(plt.gcf())
-        plt.close()
-        
-    except Exception as e:
-        st.warning(f"SHAP解释生成遇到问题: {str(e)}")
-        st.info("提示：SVM模型的SHAP解释可能需要更长时间计算")
+    # 替换原SHAP解释部分为以下代码：
+
+# SHAP解释（SVM专用版）
+try:
+    # 1. 创建适合SVM的解释器
+    explainer = shap.KernelExplainer(
+        model.predict, 
+        shap.sample(features, 5),  # 小样本背景数据
+        feature_names=list(feature_ranges.keys())
+    )
+    
+    # 2. 计算SHAP值（确保输出维度正确）
+    shap_values = explainer.shap_values(features)
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]  # 二分类取正类SHAP值
+    
+    # 3. 规范化图形输出
+    plt.figure(figsize=(12, 3))
+    shap.force_plot(
+        base_value=explainer.expected_value,
+        shap_values=shap_values[0],
+        features=features[0],
+        feature_names=list(feature_ranges.keys()),
+        matplotlib=True,
+        show=False,
+        plot_cmap="coolwarm"  # 明确指定颜色映射
+    )
+    
+    # 4. 强制设置合理坐标轴范围
+    ax = plt.gca()
+    ax.set_xlim(-1, 1)  # 固定SHAP值显示范围
+    plt.xticks(fontsize=10)
+    plt.tight_layout()
+    
+    # 5. 显示图形
+    st.pyplot(plt.gcf(), clear_figure=True)
+    plt.close()
+    
+except Exception as e:
+    st.warning(f"SHAP解释生成失败: {str(e)}")
+    st.info("建议：检查模型预测输出是否在[0,1]范围内")
