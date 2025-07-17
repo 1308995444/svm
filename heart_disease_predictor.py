@@ -99,8 +99,7 @@ if st.button("预测"):
                 matplotlib=True,
                 show=False
             )
-            ax = plt.gca()
-            ax.set_xlim(-0.2, 0.2)  # 关键修改：限制x轴范围
+
             st.pyplot(plt.gcf(), clear_figure=True)  # 修复5: 添加clear_figure
             plt.close()
             
