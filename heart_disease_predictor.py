@@ -6,10 +6,14 @@ import shap
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-# 模型加载 - Now loading SVM model
-model = joblib.load('svm.pkl')
+# 模型加载
+try:
+    model = joblib.load('svm.pkl')
+except Exception as e:
+    st.error(f"模型加载失败: {str(e)}")
+    st.stop()
 
-# 特征定义 (same as before)
+# 特征定义
 feature_ranges = {
     'gender': {"type": "categorical", "options": [1, 2], "desc": "性别/Gender (1:男/Male, 2:女/Female)"},
     'srh': {"type": "categorical", "options": [1,2,3,4,5], "desc": "自评健康/Self-rated health (1-5: 很差/Very poor 到 很好/Very good)"},
@@ -59,6 +63,7 @@ for feature, properties in feature_ranges.items():
         value = st.selectbox(
             label=properties["desc"],
             options=properties["options"],
+            index=0,
             key=f"cat_{feature}"
         )
     feature_values.append(value)
@@ -67,65 +72,72 @@ features = np.array([feature_values])
 
 # 预测与解释
 if st.button("Predict"):
-    # SVM prediction
-    predicted_class = model.predict(features)[0]
-    
-    # For SVM, we need decision function or predict_proba if available
     try:
-        # Try to get probabilities first (if SVM has probability=True)
-        predicted_proba = model.predict_proba(features)[0]
-        probability = predicted_proba[predicted_class] * 100
-        prob_text = f"Predicted probability: {probability:.2f}%"
-    except AttributeError:
-        # Fall back to decision function if predict_proba not available
-        decision_score = model.decision_function(features)[0]
-        prob_text = f"Decision score: {decision_score:.2f}"
-    
-    risk_text = f"({'High risk' if predicted_class == 1 else 'Low risk'})"
-    
-    # 结果显示
-    text_en = f"{prob_text} {risk_text}"
-    fig, ax = plt.subplots(figsize=(10,2))
-    ax.text(0.5, 0.7, text_en, 
-            fontsize=14, ha='center', va='center', fontname='Arial')
-    ax.axis('off')
-    st.pyplot(fig)
-
-    # SHAP解释 - Using KernelExplainer for SVM
-   # 在SHAP可视化部分替换为以下代码：
-
-# SHAP解释 - 使用更稳定的可视化参数
-st.subheader("SHAP Explanation")
-
-# 创建解释器（使用训练数据样本作为背景更佳）
-try:
-    # 如果有训练数据，推荐这样初始化（示例）
-    # background = shap.sample(X_train, 100) 
-    # 没有训练数据时使用均值作为背景
-    background = shap.utils.sample(features, 10) if features.shape[0] > 10 else features
-    
-    explainer = shap.KernelExplainer(model.predict, background)
-    shap_values = explainer.shap_values(features)
-    
-    # 创建更清晰的force plot
-    plt.figure(figsize=(12, 3))
-    force_plot = shap.force_plot(
-        base_value=explainer.expected_value,
-        shap_values=shap_values[0] if isinstance(shap_values, list) else shap_values,
-        features=features,
-        feature_names=list(feature_ranges.keys()),
-        matplotlib=True,
-        show=False,
-        plot_cmap="coolwarm"  # 使用更清晰的配色
-    )
-    
-    # 调整图形显示
-    plt.tight_layout()
-    plt.xticks(fontsize=10)
-    plt.yticks(fontsize=10)
-    st.pyplot(plt.gcf())
-    plt.close()
-    
-except Exception as e:
-    st.error(f"SHAP visualization error: {str(e)}")
-    st.warning("Please ensure your model supports SHAP explanation and input data is valid.")
+        # SVM prediction
+        predicted_class = model.predict(features)[0]
+        
+        # 获取预测概率或决策分数
+        try:
+            predicted_proba = model.predict_proba(features)[0]
+            probability = predicted_proba[predicted_class] * 100
+            prob_text = f"Predicted probability: {probability:.2f}%"
+        except AttributeError:
+            decision_score = model.decision_function(features)[0]
+            prob_text = f"Decision score: {decision_score:.2f}"
+        
+        risk_text = "High risk" if predicted_class == 1 else "Low risk"
+        
+        # 结果显示
+        result_col1, result_col2 = st.columns(2)
+        with result_col1:
+            st.metric(label="Prediction Result", value=risk_text)
+        with result_col2:
+            st.metric(label="Confidence", value=prob_text.split(":")[1].strip())
+        
+        # SHAP解释
+        st.subheader("Feature Impact Analysis")
+        
+        # 创建解释器
+        try:
+            # 尝试使用训练数据作为背景（如果有）
+            # background = shap.sample(X_train, 100) 
+            # 没有训练数据时使用当前输入作为背景
+            background = features.copy()
+            
+            explainer = shap.KernelExplainer(model.predict, background)
+            shap_values = explainer.shap_values(features)
+            
+            # 绘制SHAP force plot
+            plt.figure(figsize=(12, 3))
+            shap.force_plot(
+                base_value=explainer.expected_value,
+                shap_values=shap_values[0] if isinstance(shap_values, list) else shap_values,
+                features=features,
+                feature_names=list(feature_ranges.keys()),
+                matplotlib=True,
+                show=False,
+                plot_cmap="coolwarm"
+            )
+            plt.tight_layout()
+            st.pyplot(plt.gcf())
+            plt.close()
+            
+            # 附加SHAP summary plot
+            st.subheader("Feature Importance")
+            plt.figure(figsize=(10, 6))
+            shap.summary_plot(
+                shap_values, 
+                features,
+                feature_names=list(feature_ranges.keys()),
+                plot_type="bar",
+                show=False
+            )
+            st.pyplot(plt.gcf())
+            plt.close()
+            
+        except Exception as e:
+            st.warning(f"SHAP解释无法生成: {str(e)}")
+            st.info("建议检查模型是否支持SHAP解释或输入数据格式是否正确")
+            
+    except Exception as e:
+        st.error(f"预测过程中出错: {str(e)}")
