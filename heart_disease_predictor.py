@@ -15,8 +15,23 @@ except Exception as e:
 feature_ranges = {
     'gender': {"type": "categorical", "options": [1, 2], "desc": "性别 (1:男 2:女)"},
     'srh': {"type": "categorical", "options": [1,2,3,4,5], "desc": "自评健康 (1-5)"},
-    # ...（其他特征定义保持不变）
+    'adlab_c': {"type": "categorical", "options": [0,1,2,3,4,5,6], "desc": "日常活动能力 (0-6)"},
+    'arthre': {"type": "categorical", "options": [0, 1], "desc": "关节炎 (0:无 1:有)"},
+    'digeste': {"type": "categorical", "options": [0, 1], "desc": "消化问题 (0:无 1:有)"},
+    'retire': {"type": "categorical", "options": [0, 1], "desc": "退休状态 (0:未退 1:已退)"},
+    'satlife': {"type": "categorical", "options": [1,2,3,4,5], "desc": "生活满意度 (1-5)"},
+    'sleep': {"type": "numerical", "min": 0.0, "max": 24.0, "default": 7.0, "step": 0.5, "desc": "睡眠时长(小时)"},
+    'disability': {"type": "categorical", "options": [0, 1], "desc": "残疾 (0:无 1:有)"},
+    'internet': {"type": "categorical", "options": [0, 1], "desc": "上网 (0:否 1:是)"},
+    'hope': {"type": "categorical", "options": [1,2,3,4], "desc": "希望程度 (1-4)"},
+    'fall_down': {"type": "categorical", "options": [0, 1], "desc": "跌倒史 (0:无 1:有)"},
+    'eyesight_close': {"type": "categorical", "options": [1,2,3,4,5], "desc": "视力 (1-5)"},
+    'hear': {"type": "categorical", "options": [1,2,3,4,5], "desc": "听力 (1-5)"},
+    'edu': {"type": "categorical", "options": [1,2,3,4], "desc": "教育程度 (1-4)"},
+    'pension': {"type": "categorical", "options": [0, 1], "desc": "养老金 (0:无 1:有)"},
+    'pain': {"type": "categorical", "options": [0, 1], "desc": "慢性疼痛 (0:无 1:有)"}
 }
+
 
 # 输入界面（保持不变）
 feature_values = []
