@@ -6,10 +6,11 @@ import shap
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-# 模型加载
-model = joblib.load('svm.pkl')
 
-# 特征定义
+# 模型加载 - Now loading SVM model
+model = joblib.load('svm_model.pkl')
+
+# 特征定义 (same as before)
 feature_ranges = {
     'gender': {"type": "categorical", "options": [1, 2], "desc": "性别/Gender (1:男/Male, 2:女/Female)"},
     'srh': {"type": "categorical", "options": [1,2,3,4,5], "desc": "自评健康/Self-rated health (1-5: 很差/Very poor 到 很好/Very good)"},
@@ -67,53 +68,47 @@ features = np.array([feature_values])
 
 # 预测与解释
 if st.button("Predict"):
+    # SVM prediction
     predicted_class = model.predict(features)[0]
-    predicted_proba = model.predict_proba(features)[0]
-    probability = predicted_proba[predicted_class] * 100
-
+    
+    # For SVM, we need decision function or predict_proba if available
+    try:
+        # Try to get probabilities first (if SVM has probability=True)
+        predicted_proba = model.predict_proba(features)[0]
+        probability = predicted_proba[predicted_class] * 100
+        prob_text = f"Predicted probability: {probability:.2f}%"
+    except AttributeError:
+        # Fall back to decision function if predict_proba not available
+        decision_score = model.decision_function(features)[0]
+        prob_text = f"Decision score: {decision_score:.2f}"
+    
+    risk_text = f"({'High risk' if predicted_class == 1 else 'Low risk'})"
+    
     # 结果显示
-    text_en = f"Predicted probability: {probability:.2f}% ({'High risk' if predicted_class == 1 else 'Low risk'})"
+    text_en = f"{prob_text} {risk_text}"
     fig, ax = plt.subplots(figsize=(10,2))
     ax.text(0.5, 0.7, text_en, 
             fontsize=14, ha='center', va='center', fontname='Arial')
     ax.axis('off')
     st.pyplot(fig)
 
-    # SHAP解释 - 使用新版API
-    try:
-        # 创建解释器
-        explainer = shap.KernelExplainer(
-            model.predict_proba,
-            shap.sample(features, 1)  # 使用单个样本作为背景
-        )
-        
-        # 计算SHAP值
-        shap_values = explainer.shap_values(features)
-        
-        # 处理多分类输出
-        if isinstance(shap_values, list):
-            # 对于多分类问题，选择当前预测类别的SHAP值
-            shap_values_class = shap_values[predicted_class][0]
-            expected_value = explainer.expected_value[predicted_class]
-        else:
-            # 对于二分类问题
-            shap_values_class = shap_values[0]
-            expected_value = explainer.expected_value
-
-        # 创建DataFrame用于显示
-        feature_df = pd.DataFrame([feature_values], columns=feature_ranges.keys())
-
-        # 绘制SHAP force plot (新版API)
-        plt.figure()
-        shap.plots.force(
-            base_value=expected_value,
-            shap_values=shap_values_class,
-            features=feature_df.iloc[0],  # 使用单个样本的特征值
-            matplotlib=True,
-            show=False
-        )
-        st.pyplot(plt.gcf())
-        
-    except Exception as e:
-        st.warning(f"SHAP解释生成失败: {str(e)}")
-        st.write("当前模型配置可能不支持SHAP可视化。")
+    # SHAP解释 - Using KernelExplainer for SVM
+    # Create a background dataset for SHAP (could use k-means to summarize)
+    background = shap.kmeans(features, 10)  # Using k-means to create background
+    
+    # Create explainer
+    explainer = shap.KernelExplainer(model.predict, background)
+    
+    # Calculate SHAP values
+    shap_values = explainer.shap_values(features)
+    
+    # Plot force plot
+    plt.figure()
+    shap_plot = shap.force_plot(
+        explainer.expected_value,
+        shap_values[0],  # For binary classification, this shows SHAP for class 1
+        features,
+        matplotlib=True,
+        show=False
+    )
+    st.pyplot(plt.gcf())
