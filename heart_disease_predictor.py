@@ -8,7 +8,7 @@ from matplotlib import font_manager
 
 
 # 模型加载 - Now loading SVM model
-model = joblib.load('svm_model.pkl')
+model = joblib.load('svm.pkl')
 
 # 特征定义 (same as before)
 feature_ranges = {
