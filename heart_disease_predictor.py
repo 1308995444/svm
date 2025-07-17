@@ -93,11 +93,11 @@ if st.button("Predict"):
         # 处理多分类输出
         if isinstance(shap_values, list):
             # 对于多分类问题，选择当前预测类别的SHAP值
-            shap_values_class = shap_values[predicted_class]
+            shap_values_class = shap_values[predicted_class][0]
             expected_value = explainer.expected_value[predicted_class]
         else:
             # 对于二分类问题
-            shap_values_class = shap_values
+            shap_values_class = shap_values[0]
             expected_value = explainer.expected_value
 
         # 创建DataFrame用于显示
@@ -105,10 +105,10 @@ if st.button("Predict"):
 
         # 绘制SHAP force plot (新版API)
         plt.figure()
-        shap.force_plot(
+        shap.plots.force(
             base_value=expected_value,
-            shap_values=shap_values_class[0],  # 使用单个样本的SHAP值
-            features=feature_df.iloc[0],       # 使用单个样本的特征值
+            shap_values=shap_values_class,
+            features=feature_df.iloc[0],  # 使用单个样本的特征值
             matplotlib=True,
             show=False
         )
