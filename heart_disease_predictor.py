@@ -92,25 +92,40 @@ if st.button("Predict"):
     st.pyplot(fig)
 
     # SHAP解释 - Using KernelExplainer for SVM
-    # Create background data - using the mean as background (simplest approach)
-    background = np.array([np.mean(features, axis=0)])
+   # 在SHAP可视化部分替换为以下代码：
+
+# SHAP解释 - 使用更稳定的可视化参数
+st.subheader("SHAP Explanation")
+
+# 创建解释器（使用训练数据样本作为背景更佳）
+try:
+    # 如果有训练数据，推荐这样初始化（示例）
+    # background = shap.sample(X_train, 100) 
+    # 没有训练数据时使用均值作为背景
+    background = shap.utils.sample(features, 10) if features.shape[0] > 10 else features
     
-    # Create explainer
     explainer = shap.KernelExplainer(model.predict, background)
-    
-    # Calculate SHAP values
     shap_values = explainer.shap_values(features)
     
-    # Plot force plot
-    st.subheader("SHAP Explanation")
-    plt.figure()
-    shap_plot = shap.force_plot(
-        explainer.expected_value,
-        shap_values[0],  # For binary classification, this shows SHAP for class 1
-        features,
+    # 创建更清晰的force plot
+    plt.figure(figsize=(12, 3))
+    force_plot = shap.force_plot(
+        base_value=explainer.expected_value,
+        shap_values=shap_values[0] if isinstance(shap_values, list) else shap_values,
+        features=features,
         feature_names=list(feature_ranges.keys()),
         matplotlib=True,
-        show=False
+        show=False,
+        plot_cmap="coolwarm"  # 使用更清晰的配色
     )
+    
+    # 调整图形显示
+    plt.tight_layout()
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
     st.pyplot(plt.gcf())
     plt.close()
+    
+except Exception as e:
+    st.error(f"SHAP visualization error: {str(e)}")
+    st.warning("Please ensure your model supports SHAP explanation and input data is valid.")
