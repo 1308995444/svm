@@ -6,7 +6,6 @@ import shap
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-
 # 模型加载 - Now loading SVM model
 model = joblib.load('svm.pkl')
 
@@ -93,8 +92,8 @@ if st.button("Predict"):
     st.pyplot(fig)
 
     # SHAP解释 - Using KernelExplainer for SVM
-    # Create a background dataset for SHAP (could use k-means to summarize)
-    background = shap.kmeans(features, 10)  # Using k-means to create background
+    # Create background data - using the mean as background (simplest approach)
+    background = np.array([np.mean(features, axis=0)])
     
     # Create explainer
     explainer = shap.KernelExplainer(model.predict, background)
@@ -103,12 +102,15 @@ if st.button("Predict"):
     shap_values = explainer.shap_values(features)
     
     # Plot force plot
+    st.subheader("SHAP Explanation")
     plt.figure()
     shap_plot = shap.force_plot(
         explainer.expected_value,
         shap_values[0],  # For binary classification, this shows SHAP for class 1
         features,
+        feature_names=list(feature_ranges.keys()),
         matplotlib=True,
         show=False
     )
     st.pyplot(plt.gcf())
+    plt.close()
